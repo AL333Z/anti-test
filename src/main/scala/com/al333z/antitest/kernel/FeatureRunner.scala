@@ -1,29 +1,28 @@
 package com.al333z.antitest.kernel
 
 import cats.{Comonad, MonadError}
-import org.scalatest.FeatureSpec
+import org.scalatest.FeatureSpecLike
 
 import scala.language.higherKinds
 import scala.util.Try
 
-trait FeatureRunner[F[_]] {
-  featureSpec: FeatureSpec =>
+trait FeatureRunner[F[_]] extends FeatureSpecLike {
 
-  def runFeature[FeatureDeps, E](feature: Feature[F, FeatureDeps])(implicit me: MonadError[F, E], cm: Comonad[F]): Unit = {
-    featureSpec.feature(feature.description) {
-      val configuration: FeatureDeps = feature.beforeAll
-      feature.scenarios.foreach {
-        scenario =>
-          featureSpec.scenario(scenario.description) {
+  def runFeature[FeatureDeps](f: Feature[F, FeatureDeps])(implicit me: MonadError[F, Vector[String]], cm: Comonad[F]): Unit = {
+    feature(f.description) {
+      val configuration: FeatureDeps = f.beforeAll
+      f.scenarios.foreach {
+        s =>
+          scenario(s.description) {
 
-            val resource: scenario.ScenarioDeps = scenario.before(configuration)
-            val behaviour = Try(cm.extract(scenario.behaviour(configuration, resource).run)).toEither
+            val resource: s.ScenarioDeps = s.before(configuration)
+            val behaviour = Try(cm.extract(s.behaviour(configuration, resource).run)).toEither
 
-            scenario.after(resource)
+            s.after(resource)
             verify(behaviour)
           }
       }
-      feature.afterAll(configuration)
+      f.afterAll(configuration)
     }
   }
 
