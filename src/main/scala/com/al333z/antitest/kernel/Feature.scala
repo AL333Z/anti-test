@@ -11,3 +11,16 @@ trait Feature[F[_], FeatureDeps] {
 
   def afterAll(dep: FeatureDeps): Unit = ()
 }
+
+object Feature {
+  def apply[F[_], D](name: String, deps: => D, tearDown: D => Unit, scenario: Seq[Scenario[F, D]]): Feature[F, D] =
+    new Feature[F, D] {
+      override val description: String = name
+
+      override def scenarios: Seq[Scenario[F, D]] = scenario
+
+      override def beforeAll: D = deps
+
+      override def afterAll(dep: D): Unit = tearDown(dep)
+    }
+}
