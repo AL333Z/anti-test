@@ -1,7 +1,8 @@
-package com.al333z.antitest
+package com.al333z.antitest.kernel
 
 import cats.MonadError
 import cats.implicits._
+import com.al333z.antitest.LoggerT
 
 import scala.language.higherKinds
 
