@@ -53,6 +53,11 @@ pomExtra :=
         <name>Alessandro Zanin</name>
         <url>http://twitter.com/azanin</url>
       </developer>
+      <developer>
+        <id>r-tomassetti</id>
+        <name>Renato Tomassetti</name>
+        <url>http://twitter.com/r-tomassetti</url>
+      </developer>
     </developers>
 
 val VersionRegex = "v([0-9]+.[0-9]+.[0-9]+)-?(.*)?".r

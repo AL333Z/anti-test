@@ -26,7 +26,7 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
               for {
                 x <- given("an int " + intDep)(Success(intDep))
                 y <- and("a string " + strDep)(Success(strDep))
-                _ <- when("i'm happy")(Success())
+                _ <- when("i'm happy")(Success(()))
                 _ <- assert("i succeed")(1 == 1)
               } yield ()
         ),
@@ -37,7 +37,7 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
               for {
                 x <- given("an int")(Success(intDep))
                 y <- and("a string")(Success("bar"))
-                _ <- when("i'm grumpy")(Success())
+                _ <- when("i'm grumpy")(Success(()))
                 _ <- assert("i fail")(1 == 2)
               } yield ()
         )
