@@ -14,8 +14,9 @@ object TestBuilders {
 
   def test[F[_], FeatureDeps, ScenarioDep](name: String)
                                           (before: FeatureDeps => ScenarioDep,
-                                           scenario: (FeatureDeps, ScenarioDep) => LoggerT[F, Vector[String], Unit]): Scenario[F, FeatureDeps] =
-    Scenario(name, before, scenario)
+                                           scenario: (FeatureDeps, ScenarioDep) => LoggerT[F, Vector[String], Unit],
+                                           after: ScenarioDep => Unit = (_: ScenarioDep) => ()): Scenario[F, FeatureDeps] =
+    Scenario(name, before, scenario, after)
 
   def test[F[_], FeatureDeps](name: String)
                              (scenario: FeatureDeps => LoggerT[F, Vector[String], Unit]): Scenario[F, FeatureDeps] =
