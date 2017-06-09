@@ -6,18 +6,18 @@ import scala.language.higherKinds
 
 object TestBuilders {
 
-  def testSuite[F[_], Deps](name: String)
-                           (beforeAll: => Deps,
-                            tearDown: Deps => Unit = (_: Deps) => (),
-                            scenarios: Seq[Scenario[F, Deps]]): Feature[F, Deps] =
-    Feature[F, Deps](name, beforeAll, tearDown, scenarios)
+  def testSuite[F[_], FeatureDeps](name: String)
+                                  (beforeAll: => FeatureDeps,
+                                   scenarios: Seq[Scenario[F, FeatureDeps]],
+                                   afterAll: FeatureDeps => Unit = (_: FeatureDeps) => ()): Feature[F, FeatureDeps] =
+    Feature[F, FeatureDeps](name, beforeAll, scenarios, afterAll)
 
   def test[F[_], FeatureDeps, ScenarioDep](name: String)
                                           (before: FeatureDeps => ScenarioDep,
-                                           step: (FeatureDeps, ScenarioDep) => LoggerT[F, Vector[String], Unit]): Scenario[F, FeatureDeps] =
-    Scenario(name, before, step)
+                                           scenario: (FeatureDeps, ScenarioDep) => LoggerT[F, Vector[String], Unit]): Scenario[F, FeatureDeps] =
+    Scenario(name, before, scenario)
 
   def test[F[_], FeatureDeps](name: String)
-                             (step: (FeatureDeps, Unit) => LoggerT[F, Vector[String], Unit]): Scenario[F, FeatureDeps] =
-    Scenario(name, (_: FeatureDeps) => (), step)
+                             (scenario: FeatureDeps => LoggerT[F, Vector[String], Unit]): Scenario[F, FeatureDeps] =
+    Scenario(name, (_: FeatureDeps) => (), (x: FeatureDeps, _: Unit) => scenario(x))
 }

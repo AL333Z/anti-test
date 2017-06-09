@@ -7,20 +7,23 @@ trait Feature[F[_], FeatureDeps] {
 
   def scenarios: Seq[Scenario[F, FeatureDeps]]
 
-  def beforeAll: FeatureDeps
+  def beforeAll(): FeatureDeps
 
-  def afterAll(dep: FeatureDeps): Unit = ()
+  def afterAll(featureDeps: FeatureDeps): Unit = ()
 }
 
 object Feature {
-  def apply[F[_], D](name: String, deps: => D, tearDown: D => Unit, scenario: Seq[Scenario[F, D]]): Feature[F, D] =
-    new Feature[F, D] {
+  def apply[F[_], FeatureDeps](name: String,
+                               beforeAllFeature: => FeatureDeps,
+                               scenario: Seq[Scenario[F, FeatureDeps]],
+                               afterAllFeature: FeatureDeps => Unit): Feature[F, FeatureDeps] =
+    new Feature[F, FeatureDeps] {
       override val description: String = name
 
-      override def scenarios: Seq[Scenario[F, D]] = scenario
+      override def scenarios: Seq[Scenario[F, FeatureDeps]] = scenario
 
-      override def beforeAll: D = deps
+      override def beforeAll(): FeatureDeps = beforeAllFeature
 
-      override def afterAll(dep: D): Unit = tearDown(dep)
+      override def afterAll(dep: FeatureDeps): Unit = afterAllFeature(dep)
     }
 }

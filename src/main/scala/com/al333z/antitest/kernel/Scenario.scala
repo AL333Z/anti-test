@@ -9,25 +9,27 @@ trait Scenario[F[_], FeatureDeps] {
 
   val description: String
 
-  def before(beforeAll: FeatureDeps): ScenarioDeps
+  def before(featureDeps: FeatureDeps): ScenarioDeps
 
-  def after(before: ScenarioDeps): Unit = ()
+  def after(scenarioDeps: ScenarioDeps): Unit = ()
 
-  def behaviour(beforeAll: FeatureDeps, before: ScenarioDeps): LoggerT[F, Vector[String], Unit]
+  def behaviour(featureDeps: FeatureDeps, scenarioDeps: ScenarioDeps): LoggerT[F, Vector[String], Unit]
 }
 
 object Scenario {
-  def apply[F[_], D, DS](name: String,
-                         beforeStep: D => DS,
-                         b: (D, DS) => LoggerT[F, Vector[String], Unit],
-                         afterStep: DS => Unit = (_: DS) => ()): Scenario[F, D] = new Scenario[F, D] {
-    override type ScenarioDeps = DS
-    override val description: String = name
+  def apply[F[_], FeatureDeps, DS](name: String,
+                                   beforeStep: FeatureDeps => DS,
+                                   step: (FeatureDeps, DS) => LoggerT[F, Vector[String], Unit],
+                                   afterStep: DS => Unit = (_: DS) => ()): Scenario[F, FeatureDeps] =
+    new Scenario[F, FeatureDeps] {
+      override type ScenarioDeps = DS
+      override val description: String = name
 
-    override def before(beforeAll: D): ScenarioDeps = beforeStep(beforeAll)
+      override def before(featureDeps: FeatureDeps): ScenarioDeps = beforeStep(featureDeps)
 
-    override def behaviour(beforeAll: D, deps: ScenarioDeps): LoggerT[F, Vector[String], Unit] = b(beforeAll, deps)
+      override def behaviour(featureDeps: FeatureDeps, scenarioDeps: ScenarioDeps): LoggerT[F, Vector[String], Unit] =
+        step(featureDeps, scenarioDeps)
 
-    override def after(deps: ScenarioDeps): Unit = afterStep(deps)
-  }
+      override def after(scenarioDeps: ScenarioDeps): Unit = afterStep(scenarioDeps)
+    }
 }

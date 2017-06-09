@@ -12,29 +12,30 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
   runFeature[Int] {
 
     testSuite[Try, Int]("Sample description")(
+
       beforeAll = {
         42
       },
+
       scenarios = Seq(
 
         test[Try, Int, String]("Happy scenario")(
-          before = _ => "foo",
-          step =
+          before = { _ => "foo" },
+          scenario =
             (intDep, strDep) =>
               for {
-                x <- given("an int")(Success(42))
-                y <- and("a string")(Success("bar"))
+                x <- given("an int " + intDep)(Success(intDep))
+                y <- and("a string " + strDep)(Success(strDep))
                 _ <- when("i'm happy")(Success())
                 _ <- assert("i succeed")(1 == 1)
               } yield ()
         ),
 
-        test[Try, Int, String]("Failing scenario")(
-          before = _ => "bar",
-          step =
-            (intDep, strDep) =>
+        test[Try, Int]("Failing scenario")(
+          scenario =
+            intDep =>
               for {
-                x <- given("an int")(Success(42))
+                x <- given("an int")(Success(intDep))
                 y <- and("a string")(Success("bar"))
                 _ <- when("i'm grumpy")(Success())
                 _ <- assert("i fail")(1 == 2)

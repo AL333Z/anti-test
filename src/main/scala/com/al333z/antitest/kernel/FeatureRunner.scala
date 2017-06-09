@@ -8,22 +8,21 @@ import scala.util.Try
 
 trait FeatureRunner[F[_]] extends FeatureSpecLike {
 
-  def runFeature[FeatureDeps](f: Feature[F, FeatureDeps])(implicit me: MonadError[F, Vector[String]], cm: Comonad[F]): Unit = {
-    feature(f.description) {
-      val configuration: FeatureDeps = f.beforeAll
-      f.scenarios.foreach {
-        s =>
-          scenario(s.description) {
+  def runFeature[FeatureDeps](f: Feature[F, FeatureDeps])
+                             (implicit me: MonadError[F, Vector[String]], cm: Comonad[F]): Unit = feature(f.description) {
+    val featureDeps: FeatureDeps = f.beforeAll
+    f.scenarios.foreach {
+      s =>
+        scenario(s.description) {
 
-            val resource: s.ScenarioDeps = s.before(configuration)
-            val behaviour = Try(cm.extract(s.behaviour(configuration, resource).run)).toEither
+          val scenarioDeps: s.ScenarioDeps = s.before(featureDeps)
+          val result = Try(cm.extract(s.behaviour(featureDeps, scenarioDeps).run)).toEither
 
-            s.after(resource)
-            verify(behaviour)
-          }
-      }
-      f.afterAll(configuration)
+          s.after(scenarioDeps)
+          verify(result)
+        }
     }
+    f.afterAll(featureDeps)
   }
 
   private def verify(testResult: Either[Throwable, (Vector[String], Unit)]) = {
