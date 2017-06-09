@@ -5,7 +5,7 @@ import com.al333z.antitest.TestBuilders._
 import com.al333z.antitest.kernel.{AntiTestDSL, FeatureRunner}
 
 import scala.language.higherKinds
-import scala.util.{Success, Try}
+import scala.util.{Random, Success, Try}
 
 class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstances with TryInstances {
 
@@ -28,6 +28,7 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
                 y <- and("a string " + strDep)(Success(strDep))
                 _ <- when("i'm happy")(Success(()))
                 _ <- assert("i succeed")(1 == 1)
+                _ <- assertEventually("i succeed, eventually") { () => Random.nextInt(10) % 2 == 0 }
               } yield ()
         ),
 
