@@ -16,8 +16,13 @@ trait FeatureRunner[F[_]] extends FeatureSpecLike {
 
     f.scenarios.zip(indexes).foreach {
       case (s, i) =>
-        scenario(i + ". " + s.description) {
-
+        val description = i + ". " + s.description + {
+          s match {
+            case sampleScenario: SampleScenario[F, FeatureDeps, s.ScenarioDeps, s.Sample] ⇒ " " + sampleScenario.sample
+            case _ ⇒ ""
+          }
+        }
+        scenario(description) {
           val scenarioDeps: s.ScenarioDeps = s.before(featureDeps)
           val result = Try(cm.extract(s.behaviour(featureDeps, scenarioDeps).run)).toEither
 
