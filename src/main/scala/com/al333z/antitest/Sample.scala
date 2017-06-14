@@ -44,6 +44,18 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
         )
 
       )
+
+        ++
+
+        tests[Try, Int, String]("a test with samples")(
+          scenario = (fd, sample) => {
+            for {
+              _ <- given("an int: " + fd)(Success(fd))
+              _ <- assert(sample + " == Alice")(sample == "Alice")
+            } yield ()
+          },
+          examples = Seq("Bob", "Alice")
+        )
     )
   }
 
