@@ -1,6 +1,7 @@
 package com.al333z.antitest
 
 import cats.instances.VectorInstances
+import cats.instances.string._
 import com.al333z.antitest.TestBuilders._
 import com.al333z.antitest.kernel.{AntiTestDSL, FeatureRunner}
 
@@ -10,7 +11,6 @@ import scala.util.{Random, Success, Try}
 class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstances with TryInstances {
 
   runFeature[Int] {
-
     testSuite[Try, Int]("Sample description")(
 
       beforeAll = {
@@ -51,7 +51,7 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
           scenario = (fd, sample) => {
             for {
               _ <- given("an int: " + fd)(Success(fd))
-              _ <- assert(sample + " == Alice")(sample == "Alice")
+              _ <- assertEquals(sample + " == Alice")(sample, "Alice")
             } yield ()
           },
           examples = Seq("Bob", "Alice")

@@ -1,7 +1,7 @@
 package com.al333z.antitest.kernel
 
-import cats.MonadError
 import cats.implicits._
+import cats.{Eq, MonadError}
 import com.al333z.antitest.LoggerT
 
 import scala.language.higherKinds
@@ -24,6 +24,11 @@ trait AntiTestDSL[F[_]] {
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
     if (assertion) LoggerT[F, Vector[String], Unit](monadError.pure((Vector("Then " + description), ())))
     else LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(Vector("Assertion failed: " + description)))
+  }
+
+  def assertEquals[A](description: String)(expected: A, actual: A)(implicit monadError: MonadError[F, Vector[String]], eq: Eq[A]) = {
+    if (eq.eqv(expected, actual)) LoggerT[F, Vector[String], Unit](monadError.pure((Vector("Then " + description), ())))
+    else LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(Vector("Assertion failed: expected -> " + expected + " found -> " + actual)))
   }
 
   def assertEventually(description: String)(assertion: () => Boolean)(
