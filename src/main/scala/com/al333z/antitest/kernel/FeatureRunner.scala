@@ -26,8 +26,12 @@ trait FeatureRunner[F[_]] extends FeatureSpecLike {
           val scenarioDeps: s.ScenarioDeps = s.before(featureDeps)
           val result = Try(cm.extract(s.behaviour(featureDeps, scenarioDeps).run)).toEither
 
-          s.after(scenarioDeps)
-          verify(result)
+          try {
+            s.after(scenarioDeps)
+          }
+          finally {
+            verify(result)
+          }
         }
     }
     f.afterAll(featureDeps)
