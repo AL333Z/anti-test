@@ -12,9 +12,10 @@ trait FeatureRunner[F[_]] extends FeatureSpecLike {
   def runFeature[FeatureDeps](f: Feature[F, FeatureDeps])
                              (implicit me: MonadError[F, Vector[String]], cm: Comonad[F]): Unit = feature(f.description) {
     val featureDeps: FeatureDeps = f.beforeAll()
-    val indexes: immutable.Seq[Int] = f.scenarios.indices
+    val scenarios = f.scenarios
+    val indexes: immutable.Seq[Int] = scenarios.indices
 
-    f.scenarios.zip(indexes).foreach {
+    scenarios.zip(indexes).foreach {
       case (s, i) =>
         val description = i + ". " + s.description + {
           s match {
@@ -28,13 +29,14 @@ trait FeatureRunner[F[_]] extends FeatureSpecLike {
 
           try {
             s.after(scenarioDeps)
+            if(i == (scenarios.length -1))
+              f.afterAll(featureDeps) // FIXME we can do better than this
           }
           finally {
             verify(result)
           }
         }
     }
-    f.afterAll(featureDeps)
   }
 
   private def verify(testResult: Either[Throwable, (Vector[String], Unit)]) = {
