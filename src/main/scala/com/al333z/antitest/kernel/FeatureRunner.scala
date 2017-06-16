@@ -18,7 +18,7 @@ trait FeatureRunner[F[_]] extends FeatureSpecLike {
       case (s, i) =>
         val description = i + ". " + s.description + {
           s match {
-            case sampleScenario: SampleScenario[F, FeatureDeps, s.ScenarioDeps, s.Sample] ⇒ " " + sampleScenario.sample
+            case SampleScenario(_, _, _, _, sample) ⇒ " " + sample
             case _ ⇒ ""
           }
         }
