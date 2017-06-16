@@ -26,7 +26,25 @@ trait AntiTestDSL[F[_]] {
     else LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(Vector("Assertion failed: " + description)))
   }
 
-  def assertEquals[A](description: String)(expected: A, actual: A)(implicit monadError: MonadError[F, Vector[String]], eq: Eq[A]) = {
+  def assertF(description: String)(assertion: F[Boolean])(
+    implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
+
+    val assertionRes: F[(Vector[String], Unit)] = monadError.handleErrorWith(
+      monadError.flatMap(assertion) { y =>
+        if (y) monadError.pure((Vector("Then " + description), ()))
+        else monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed: " + description))
+      }
+    ) { err =>
+      monadError.raiseError[(Vector[String], Unit)](
+        Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n"))
+      )
+    }
+
+    LoggerT[F, Vector[String], Unit](assertionRes)
+  }
+
+  def assertEquals[A](description: String)(expected: A, actual: A)(
+    implicit monadError: MonadError[F, Vector[String]], eq: Eq[A]): LoggerT[F, Vector[String], Unit] = {
     if (eq.eqv(expected, actual)) LoggerT[F, Vector[String], Unit](monadError.pure((Vector("Then " + description), ())))
     else LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(Vector("Assertion failed: expected -> " + expected + " found -> " + actual)))
   }
