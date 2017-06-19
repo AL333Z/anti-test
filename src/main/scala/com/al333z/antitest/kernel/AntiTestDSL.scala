@@ -4,7 +4,9 @@ import cats.implicits._
 import cats.{Eq, MonadError}
 import com.al333z.antitest.LoggerT
 
-import scala.language.higherKinds
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
 
 trait AntiTestDSL[F[_]] {
 
@@ -58,14 +60,14 @@ trait AntiTestDSL[F[_]] {
   }
 
 
-  def assertEventuallyF(description: String)(assertion: F[Boolean], maxRetry: Int = 5, delay: Long = 500)(
+  def assertEventuallyF(description: String)(assertion: F[Boolean], maxRetry: Int = 5, delay: Duration = 500 millis)(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
 
-    def retry(assertion: F[Boolean], currentRetry: Int, delay: Long): F[(Vector[String], Unit)] = {
+    def retry(assertion: F[Boolean], currentRetry: Int, delay: Duration): F[(Vector[String], Unit)] = {
       monadError.flatMap(assertion) { predicate: Boolean ⇒
         if (predicate) monadError.pure((Vector("Then " + description), ()))
         else if (currentRetry < maxRetry) {
-          Thread.sleep(delay)
+          Thread.sleep(delay.toMillis) // FIXME works, but ugly
           retry(monadError.pure(predicate), currentRetry + 1, delay)
         }
         else
