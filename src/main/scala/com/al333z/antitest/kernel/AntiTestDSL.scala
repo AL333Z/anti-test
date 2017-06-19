@@ -28,8 +28,7 @@ trait AntiTestDSL[F[_]] {
 
   def assertF(description: String)(assertion: F[Boolean])(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] =
-    assertEventuallyF(description)(() ⇒ assertion, 1)
-
+    assertEventuallyF(description)(assertion, 1)
 
   def assertEquals[A](description: String)(expected: A, actual: A)(
     implicit monadError: MonadError[F, Vector[String]], eq: Eq[A]): LoggerT[F, Vector[String], Unit] = {
@@ -59,26 +58,26 @@ trait AntiTestDSL[F[_]] {
   }
 
 
-  def assertEventuallyF(description: String)(assertion: () => F[Boolean], maxRetry: Int )(
+  def assertEventuallyF(description: String)(assertion: F[Boolean], maxRetry: Int = 5, delay: Long = 500)(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
 
-    def retry(assertion: () => F[Boolean], currentRetry: Int): F[(Vector[String], Unit)] = {
-      monadError.handleErrorWith(
-        monadError.flatMap(assertion()) { a: Boolean ⇒
-          if (a) monadError.pure((Vector("Then " + description), ()))
-          else if (currentRetry < maxRetry) {
-            Thread.sleep(500)
-            retry(() ⇒ monadError.pure(a), currentRetry + 1)
-          }
-          else
-            monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
-
-        }) {
-        err =>
-          monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
+    def retry(assertion: F[Boolean], currentRetry: Int, delay: Long): F[(Vector[String], Unit)] = {
+      monadError.flatMap(assertion) { predicate: Boolean ⇒
+        if (predicate) monadError.pure((Vector("Then " + description), ()))
+        else if (currentRetry < maxRetry) {
+          Thread.sleep(delay)
+          retry(monadError.pure(predicate), currentRetry + 1, delay)
+        }
+        else
+          monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
       }
     }
-    LoggerT[F, Vector[String], Unit](retry(assertion,0))
+
+    LoggerT[F, Vector[String], Unit](monadError.handleErrorWith(retry(assertion, 0, delay)) {
+      err => {
+        monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
+      }
+    })
   }
 
 
