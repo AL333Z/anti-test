@@ -4,8 +4,7 @@ import cats.implicits._
 import cats.{Eq, MonadError}
 import com.al333z.antitest.LoggerT
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration._
+import scala.concurrent.duration.{Duration, _}
 import scala.language.{higherKinds, postfixOps}
 
 trait AntiTestDSL[F[_]] {
@@ -38,7 +37,7 @@ trait AntiTestDSL[F[_]] {
     else LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(Vector("Assertion failed: expected -> " + expected + " found -> " + actual)))
   }
 
-  def assertEventually(description: String)(assertion: () => Boolean)(
+  def assertEventually(description: String)(assertion: () => Boolean, maxRetry: Int = 5, delay: Duration = 500 millis)(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
 
     def retry(assertion: () => Boolean, currentRetry: Int): LoggerT[F, Vector[String], Unit] = {
@@ -47,7 +46,7 @@ trait AntiTestDSL[F[_]] {
         LoggerT[F, Vector[String], Unit](monadError.pure((Vector(msg), ())))
       }
       else if (currentRetry < 5) {
-        Thread.sleep(500) // FIXME works, but ugly
+        Thread.sleep(delay.toMillis) // FIXME works, but ugly
         retry(assertion, currentRetry + 1)
       }
       else
@@ -59,12 +58,11 @@ trait AntiTestDSL[F[_]] {
     retry(assertion, 0)
   }
 
-
   def assertEventuallyF(description: String)(assertion: F[Boolean], maxRetry: Int = 5, delay: Duration = 500 millis)(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
 
     def retry(assertion: F[Boolean], currentRetry: Int, delay: Duration): F[(Vector[String], Unit)] = {
-      monadError.flatMap(assertion) { predicate: Boolean ⇒
+      assertion.flatMap { predicate: Boolean ⇒
         if (predicate) monadError.pure((Vector("Then " + description), ()))
         else if (currentRetry < maxRetry) {
           Thread.sleep(delay.toMillis) // FIXME works, but ugly
@@ -75,13 +73,14 @@ trait AntiTestDSL[F[_]] {
       }
     }
 
-    LoggerT[F, Vector[String], Unit](monadError.handleErrorWith(retry(assertion, 0, delay)) {
-      err => {
-        monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
+    LoggerT[F, Vector[String], Unit](
+      retry(assertion, 0, delay).handleErrorWith {
+        err => {
+          monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
+        }
       }
-    })
+    )
   }
-
 
   private def logged[A](description: String)(task: F[A])(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], A] = {
