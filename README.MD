@@ -17,6 +17,7 @@ Authors
 
 - [@al333z](https://github.com/AL333Z)
 
+- [@r-tomassetti](http://twitter.com/r-tomassetti)
 
 How
 ===
