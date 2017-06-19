@@ -27,21 +27,9 @@ trait AntiTestDSL[F[_]] {
   }
 
   def assertF(description: String)(assertion: F[Boolean])(
-    implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
+    implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] =
+    assertEventuallyF(description)(() ⇒ assertion, 1)
 
-    val assertionRes: F[(Vector[String], Unit)] = monadError.handleErrorWith(
-      monadError.flatMap(assertion) { y =>
-        if (y) monadError.pure((Vector("Then " + description), ()))
-        else monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed: " + description))
-      }
-    ) { err =>
-      monadError.raiseError[(Vector[String], Unit)](
-        Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n"))
-      )
-    }
-
-    LoggerT[F, Vector[String], Unit](assertionRes)
-  }
 
   def assertEquals[A](description: String)(expected: A, actual: A)(
     implicit monadError: MonadError[F, Vector[String]], eq: Eq[A]): LoggerT[F, Vector[String], Unit] = {
@@ -69,6 +57,30 @@ trait AntiTestDSL[F[_]] {
 
     retry(assertion, 0)
   }
+
+
+  def assertEventuallyF(description: String)(assertion: () => F[Boolean], maxRetry: Int )(
+    implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
+
+    def retry(assertion: () => F[Boolean], currentRetry: Int): F[(Vector[String], Unit)] = {
+      monadError.handleErrorWith(
+        monadError.flatMap(assertion()) { a: Boolean ⇒
+          if (a) monadError.pure((Vector("Then " + description), ()))
+          else if (currentRetry < maxRetry) {
+            Thread.sleep(500)
+            retry(() ⇒ monadError.pure(a), currentRetry + 1)
+          }
+          else
+            monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
+
+        }) {
+        err =>
+          monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
+      }
+    }
+    LoggerT[F, Vector[String], Unit](retry(assertion,0))
+  }
+
 
   private def logged[A](description: String)(task: F[A])(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], A] = {
