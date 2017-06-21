@@ -66,7 +66,7 @@ trait AntiTestDSL[F[_]] {
         if (predicate) monadError.pure((Vector("Then " + description), ()))
         else if (currentRetry < maxRetry) {
           Thread.sleep(delay.toMillis) // FIXME works, but ugly
-          retry(monadError.pure(predicate), currentRetry + 1, delay)
+          retry(assertion, currentRetry + 1, delay)
         }
         else
           monadError.raiseError[(Vector[String], Unit)](Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
