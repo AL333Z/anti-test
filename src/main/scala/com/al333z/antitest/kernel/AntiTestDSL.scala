@@ -1,5 +1,6 @@
 package com.al333z.antitest.kernel
 
+import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
 import cats.{Eq, MonadError}
 import com.al333z.antitest.LoggerT
@@ -8,6 +9,8 @@ import scala.concurrent.duration.{Duration, _}
 import scala.language.{higherKinds, postfixOps}
 
 trait AntiTestDSL[F[_]] {
+
+  type Errors = Vector[String]
 
   def given[A](description: String)(task: F[A])(
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], A] =
@@ -25,6 +28,17 @@ trait AntiTestDSL[F[_]] {
     implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
     if (assertion) LoggerT[F, Vector[String], Unit](monadError.pure((Vector("Then " + description), ())))
     else LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(Vector("Assertion failed: " + description)))
+  }
+
+  def assertP[A](description: String)(a: A)(predicate: Predicate[Errors, A])(
+    implicit monadError: MonadError[F, Vector[String]]): LoggerT[F, Vector[String], Unit] = {
+    predicate.run(a) match {
+      case Valid(_) => LoggerT[F, Vector[String], Unit](monadError.pure((Vector("Then " + description), ())))
+      case Invalid(e) =>
+        LoggerT.lift[F, Vector[String], Unit](monadError.raiseError(
+          Vector("Assertion failed: " + description) ++ e
+        ))
+    }
   }
 
   def assertF(description: String)(assertion: F[Boolean])(
