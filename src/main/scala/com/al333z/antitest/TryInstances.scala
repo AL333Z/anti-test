@@ -1,7 +1,6 @@
 package com.al333z.antitest
 
 import cats.{Comonad, MonadError}
-
 import scala.util.{Failure, Success, Try}
 
 trait TryInstances {
