@@ -26,14 +26,15 @@ class Example extends FeatureSpec with AntiTestDSL[Try] with FeatureRunner[Try] 
               p = string => false
             )
 
-            val successPredicate = Predicate.lift[Errors, String](
-              failure = Vector("This happens when predicate fail"),
-              p = string => false
-            )
+            val notFailPredicate = Predicate.lift[Errors, String](
+              failure = Vector("This happens when predicate fail 2"),
+              p = string => fail
+            ).not
 
-            assertP("Una prova di Predicate")("Pippo")(failPredicate.and(successPredicate))
+
+            assertP("Una prova di Predicate")("Pippo")(failPredicate.and(notFailPredicate).not)
           }
-      )
+        )
       )
     )
   }
