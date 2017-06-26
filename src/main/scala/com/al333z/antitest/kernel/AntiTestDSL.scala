@@ -44,6 +44,57 @@ trait AntiTestDSL[F[_]] {
     }
   }
 
+  def assertEventuallyFP[A](a: A)(predicateF: F[Predicate[Errors, A]], maxRetry: Int = 5, delay: Duration = 500 millis)(
+    implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
+
+    def retry(predicateF: F[Predicate[Errors,A]], currentRetry: Int, delay: Duration): F[(Errors, Unit)] = {
+      predicateF.flatMap{
+        predicate => predicate.run(a) match {
+          case Valid((_, message)) => monadError.pure((Vector("Then " + message.mkString("\n")), ()))
+          case Invalid(e) =>
+            if(currentRetry < maxRetry) {
+              Thread.sleep(delay.toMillis) // FIXME works, but ugly
+              retry(predicateF, currentRetry + 1, delay)
+            } else
+              monadError.raiseError(
+                Vector("Predicate failed: " + e.mkString("\n"))
+              )
+        }
+      }
+    }
+
+    LoggerT[F, Errors, Unit](
+      retry(predicateF, 0, delay).handleErrorWith {
+        err => {
+          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed with exception: " + a + "\n" + err.mkString("\n")))
+        }
+      }
+    )
+  }
+
+  def assertEventuallyF(description: String)(assertion: F[Boolean], maxRetry: Int = 5, delay: Duration = 500 millis)(
+    implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
+
+    def retry(assertion: F[Boolean], currentRetry: Int, delay: Duration): F[(Errors, Unit)] = {
+      assertion.flatMap { predicate: Boolean ⇒
+        if (predicate) monadError.pure((Vector("Then " + description), ()))
+        else if (currentRetry < maxRetry) {
+          Thread.sleep(delay.toMillis) // FIXME works, but ugly
+          retry(assertion, currentRetry + 1, delay)
+        }
+        else
+          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
+      }
+    }
+
+    LoggerT[F, Errors, Unit](
+      retry(assertion, 0, delay).handleErrorWith {
+        err => {
+          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
+        }
+      }
+    )
+  }
   def assertF(description: String)(assertion: F[Boolean])(
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] =
     assertEventuallyF(description)(assertion, 1)
@@ -73,30 +124,6 @@ trait AntiTestDSL[F[_]] {
     }
 
     retry(assertion, 0)
-  }
-
-  def assertEventuallyF(description: String)(assertion: F[Boolean], maxRetry: Int = 5, delay: Duration = 500 millis)(
-    implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
-
-    def retry(assertion: F[Boolean], currentRetry: Int, delay: Duration): F[(Errors, Unit)] = {
-      assertion.flatMap { predicate: Boolean ⇒
-        if (predicate) monadError.pure((Vector("Then " + description), ()))
-        else if (currentRetry < maxRetry) {
-          Thread.sleep(delay.toMillis) // FIXME works, but ugly
-          retry(assertion, currentRetry + 1, delay)
-        }
-        else
-          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
-      }
-    }
-
-    LoggerT[F, Errors, Unit](
-      retry(assertion, 0, delay).handleErrorWith {
-        err => {
-          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed with exception: " + description + "\n" + err.mkString("\n")))
-        }
-      }
-    )
   }
 
   private def logged[A](description: String)(task: F[A])(
