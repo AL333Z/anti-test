@@ -1,11 +1,11 @@
 package com.al333z.antitest.kernel
 
-import com.al333z.antitest.TestBuilders.testSuite
-import org.scalatest.FeatureSpec
-import com.al333z.antitest.TestBuilders._
+import com.al333z.antitest.TestBuilders.{testSuite, _}
 import com.al333z.antitest.TryInstances
+import com.al333z.antitest.kernel.Predicate._
+import org.scalatest.FeatureSpec
 
-import scala.util.{Success, Try}
+import scala.util.Try
 
 class Example extends FeatureSpec with AntiTestDSL[Try] with FeatureRunner[Try] with TryInstances {
 
@@ -21,18 +21,11 @@ class Example extends FeatureSpec with AntiTestDSL[Try] with FeatureRunner[Try] 
 
           scenario = stringDep => {
 
-            val failPredicate = Predicate.lift[Errors, String](
-              failure = Vector("This happens when predicate fail"),
-              p = string => false
-            )
+            val failPredicate = predicate(description = "This happens when predicate fail")((_: String) => false)
 
-            val notFailPredicate = Predicate.lift[Errors, String](
-              failure = Vector("This happens when predicate fail 2"),
-              p = string => fail
-            ).not
+            val notFailPredicate = not(predicate("This happens when predicate fail 2")((_: String) => false))
 
-
-            assertP("Una prova di Predicate")("Pippo")(failPredicate.and(notFailPredicate).not)
+            assertP("Pippo")(failPredicate.and(notFailPredicate))
           }
         )
       )
