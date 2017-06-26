@@ -26,6 +26,7 @@ class Example extends FeatureSpec with AntiTestDSL[Try] with FeatureRunner[Try] 
             val notFailPredicate = not(predicate("This happens when predicate 2 fail")((_: String) => true))
 
             assertP("Pippo")(failPredicate.and(notFailPredicate))
+            assertEventuallyFP("Pippo")(Try(failPredicate))
           }
         )
       )
