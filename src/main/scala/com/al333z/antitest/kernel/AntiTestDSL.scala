@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
 import cats.{Eq, MonadError}
 import com.al333z.antitest.LoggerT
+
 import scala.concurrent.duration.{Duration, _}
 import scala.language.{higherKinds, postfixOps}
 
@@ -36,37 +37,39 @@ trait AntiTestDSL[F[_]] {
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
 
     predicate.run(a) match {
-      case Valid((boolean, message)) => LoggerT[F, Errors, Unit](monadError.pure((Vector("Then " + message.mkString("\n")), ())))
+      case Valid(message) => LoggerT[F, Errors, Unit](monadError.pure((Vector("Then " + message.validPredicate.mkString(" " + message.description + " ")), ())))
       case Invalid(e) =>
         LoggerT.lift[F, Errors, Unit](monadError.raiseError(
-          Vector("Predicate failed: \n" + e.error.mkString("\n" + e.description + " \n") )
+          Vector("Predicate failed: \n" + e.error.mkString("\n" + e.description + " \n"))
         ))
     }
   }
 
-  def assertEventuallyFP[A](a: A)(predicateF: F[Predicate[Errors, A]], maxRetry: Int = 5, delay: Duration = 500 millis)(
+  def assertEventuallyFP[A](fa: F[A])(predicate: Predicate[Errors, A], maxRetry: Int = 5, delay: Duration = 500 millis)(
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
 
-    def retry(predicateF: F[Predicate[Errors,A]], currentRetry: Int, delay: Duration): F[(Errors, Unit)] = {
-      predicateF.flatMap{
-        predicate => predicate.run(a) match {
-          case Valid((_, message)) => monadError.pure((Vector("Then " + message.mkString("\n")), ()))
-          case Invalid(e) =>
-            if(currentRetry < maxRetry) {
-              Thread.sleep(delay.toMillis) // FIXME works, but ugly
-              retry(predicateF, currentRetry + 1, delay)
-            } else
-              monadError.raiseError(
-                Vector("Predicate failed: \n" + e.error.mkString("\n" + e.description + " \n") )
-              )
-        }
+    def retry(f: F[A], currentRetry: Int, delay: Duration): F[(Errors, Unit)] = {
+      f.flatMap {
+        a =>
+          predicate.run(a) match {
+            case Valid(message) =>
+              monadError.pure((Vector("Then " + message.validPredicate.mkString(" " + message.description + " ")), ()))
+            case Invalid(e) =>
+              if (currentRetry < maxRetry) {
+                Thread.sleep(delay.toMillis) // FIXME works, but ugly
+                retry(fa, currentRetry + 1, delay)
+              } else
+                monadError.raiseError(
+                  Vector("Predicate failed: \n" + e.error.mkString("\n" + e.description + " \n"))
+                )
+          }
       }
     }
 
     LoggerT[F, Errors, Unit](
-      retry(predicateF, 0, delay).handleErrorWith {
+      retry(fa, 0, delay).handleErrorWith {
         err => {
-          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed with exception: " + a + "\n" + err.mkString("\n")))
+          monadError.raiseError[(Errors, Unit)](Vector("Assertion failed with exception:\n" + err.mkString("\n")))
         }
       }
     )
@@ -99,7 +102,6 @@ trait AntiTestDSL[F[_]] {
           monadError.raiseError(Vector("Assertion failed (after " + currentRetry + " attempts): " + description))
         )
     }
-
     retry(assertion, 0)
   }
 
@@ -134,5 +136,4 @@ trait AntiTestDSL[F[_]] {
       res <- LoggerT.lift[F, Errors, A](task)
     } yield res
   }
-
 }
