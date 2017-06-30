@@ -4,7 +4,6 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
 import cats.{Eq, MonadError}
 import com.al333z.antitest.LoggerT
-
 import scala.concurrent.duration.{Duration, _}
 import scala.language.{higherKinds, postfixOps}
 
