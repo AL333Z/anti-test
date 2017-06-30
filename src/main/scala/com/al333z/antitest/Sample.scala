@@ -43,7 +43,6 @@ class Sample extends FeatureRunner[Try] with AntiTestDSL[Try] with VectorInstanc
                 _ <- assert("and then i fail")(1 == 2)
               } yield ()
         )
-
       )
 
         ++
