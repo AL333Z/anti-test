@@ -13,7 +13,7 @@ trait AntiTestDSL[F[_]] {
   type Errors = Vector[String]
 
   def predicate[A](description: String)(pred: A => Boolean): Predicate[Errors, A] =
-    Predicate.lift[Errors, A](Vector(description), pred)
+    Predicate.lift[Errors, A](description ,Vector(description), pred)
 
   def given[A](description: String)(task: F[A])(
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, A] =
@@ -37,10 +37,10 @@ trait AntiTestDSL[F[_]] {
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
 
     predicate.run(a) match {
-      case Valid(message) => LoggerT[F, Errors, Unit](monadError.pure((Vector("Then " + message.validPredicate.mkString(" " + message.description + " ")), ())))
+      case Valid(_) => LoggerT[F, Errors, Unit](monadError.pure((Vector("Then " + predicate.description), ())))
       case Invalid(e) =>
         LoggerT.lift[F, Errors, Unit](monadError.raiseError(
-          Vector("Predicate failed: \n" + e.error.mkString("\n" + e.description + " \n"))
+          Vector("Predicate failed: \n" + e.error.mkString("\n" + e.errorMessage + " \n"))
         ))
     }
   }
@@ -53,14 +53,14 @@ trait AntiTestDSL[F[_]] {
         a =>
           predicate.run(a) match {
             case Valid(message) =>
-              monadError.pure((Vector("Then " + message.validPredicate.mkString(" " + message.description + " ")), ()))
+              monadError.pure((Vector("Then " + predicate.description), ()))
             case Invalid(e) =>
               if (currentRetry < maxRetry) {
                 Thread.sleep(delay.toMillis) // FIXME works, but ugly
                 retry(fa, currentRetry + 1, delay)
               } else
                 monadError.raiseError(
-                  Vector("Predicate failed: \n" + e.error.mkString("\n" + e.description + " \n"))
+                  Vector("Predicate failed: \n" + e.error.mkString("\n" + e.errorMessage + " \n"))
                 )
           }
       }
