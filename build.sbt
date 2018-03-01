@@ -20,7 +20,7 @@ licenses := Seq(("MIT", new URL("https://opensource.org/licenses/mit-license.php
 homepage := Some(url("http://github.com/AL333Z/anti-test"))
 
 libraryDependencies ++= Seq(
-  "org.typelevel" %% "cats" % "0.9.0",
+  "org.typelevel" %% "cats-core" % "1.0.1",
   "org.scalatest" %% "scalatest" % "3.0.1"
 )
 

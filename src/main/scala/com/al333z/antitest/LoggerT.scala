@@ -1,8 +1,7 @@
 package com.al333z.antitest
 
-import cats.functor.Contravariant
 import cats.syntax.semigroup._
-import cats.{Applicative, Apply, Functor, MonadError, Monoid, Semigroup, Show}
+import cats.{Applicative, Apply, Contravariant, Functor, MonadError, Monoid, Semigroup, Show}
 
 import scala.language.higherKinds
 
