@@ -84,6 +84,30 @@ trait AntiTestDSL[F[_]] {
     else LoggerT.lift[F, Errors, Unit](monadError.raiseError(Vector("Assertion failed: expected -> " + expected + " found -> " + actual)))
   }
 
+  def assertEqualsEventually[A](description: String)(v1: => A, v2: => A, maxRetry: Int = 5, delay: Duration = 1500 millis)(
+    implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
+
+    def retry(assertion: () => Boolean, currentRetry: Int): LoggerT[F, Errors, Unit] = {
+      print("\n\n\nretrying...\n\n\n")
+      if (assertion()) {
+        val msg = "Then " + description + (if (currentRetry > 0) " (after " + currentRetry + " attempts)" else "")
+        LoggerT[F, Errors, Unit](monadError.pure((Vector(msg), ())))
+      }
+      else if (currentRetry < 5) {
+        Thread.sleep(delay.toMillis)
+        retry(assertion, currentRetry + 1)
+      }
+      else
+        LoggerT.lift[F, Errors, Unit](
+          monadError.raiseError(Vector("Assertion failed (after " + currentRetry + " attempts): " +
+            description + "\n\n  Expected: " + v1 + ", but found: " + v2 + "\n"))
+        )
+    }
+    val assertion: () => Boolean = () => v1.equals(v2)
+
+    retry(assertion, 0)
+  }
+
   def assertEventually(description: String)(assertion: () => Boolean, maxRetry: Int = 5, delay: Duration = 500 millis)(
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
 
