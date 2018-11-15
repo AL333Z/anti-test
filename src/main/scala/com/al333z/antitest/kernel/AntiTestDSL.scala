@@ -88,7 +88,6 @@ trait AntiTestDSL[F[_]] {
     implicit monadError: MonadError[F, Errors]): LoggerT[F, Errors, Unit] = {
 
     def retry(assertion: () => Boolean, currentRetry: Int): LoggerT[F, Errors, Unit] = {
-      print("\n\n\nretrying...\n\n\n")
       if (assertion()) {
         val msg = "Then " + description + (if (currentRetry > 0) " (after " + currentRetry + " attempts)" else "")
         LoggerT[F, Errors, Unit](monadError.pure((Vector(msg), ())))
